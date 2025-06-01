@@ -6,8 +6,6 @@ class Task {
   final bool isCompleted;
   final DateTime? dueDate;
   final DateTime createdAt;
-  final String? voiceNotePath;
-  final Duration? voiceNoteDuration;
 
   Task({
     required this.id,
@@ -17,8 +15,6 @@ class Task {
     this.isCompleted = false,
     this.dueDate,
     required this.createdAt,
-    this.voiceNotePath,
-    this.voiceNoteDuration,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,8 +24,6 @@ class Task {
         'createdAt': createdAt.toIso8601String(),
         'dueDate': dueDate?.toIso8601String(),
         'isCompleted': isCompleted,
-        'voiceNotePath': voiceNotePath,
-        'voiceNoteDuration': voiceNoteDuration?.inSeconds,
       };
 
   factory Task.fromJson(Map<String, dynamic> json) => Task(
@@ -39,9 +33,5 @@ class Task {
         createdAt: DateTime.parse(json['createdAt']),
         dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate']) : null,
         isCompleted: json['isCompleted'] ?? false,
-        voiceNotePath: json['voiceNotePath'],
-        voiceNoteDuration: json['voiceNoteDuration'] != null
-            ? Duration(seconds: json['voiceNoteDuration'])
-            : null,
       );
 }
