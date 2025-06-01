@@ -13,8 +13,15 @@ class _VerifyPinScreenState extends State<VerifyPinScreen> {
   String? _errorText;
 
   Future<void> _verifyPin() async {
+    if (_pinController.text.isEmpty) {
+      setState(() {
+        _errorText = 'Please enter your PIN';
+      });
+      return;
+    }
+    
     final prefs = await SharedPreferences.getInstance();
-    final storedPin = prefs.getString('pin') ?? '';
+    final storedPin = prefs.getString('user_pin') ?? '';
 
     if (_pinController.text == storedPin) {
       Navigator.pushReplacementNamed(context, '/create_new_pin');
@@ -43,10 +50,7 @@ class _VerifyPinScreenState extends State<VerifyPinScreen> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _verifyPin,
-              child: const Text('Verify'),
-            ),
+            ElevatedButton(onPressed: _verifyPin, child: const Text('Verify')),
           ],
         ),
       ),

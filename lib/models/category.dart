@@ -35,7 +35,7 @@ class Category {
     return Category(
       id: json['id'],
       name: json['name'],
-      icon: IconData(
+      icon: new IconData(
         json['iconCodePoint'],
         fontFamily: json['iconFontFamily'],
         fontPackage: json['iconFontPackage'],

@@ -10,6 +10,10 @@ import '../providers/theme_provider.dart';
 import 'package:vibration/vibration.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:confetti/confetti.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class CategoryTasksScreen extends StatefulWidget {
   final Category category;
@@ -61,6 +65,11 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
     final TextEditingController taskController = TextEditingController();
     DateTime? dueDate;
     TimeOfDay? dueTime;
+    String? voiceNotePath;
+    Duration? voiceNoteDuration;
+    bool isRecording = false;
+    final recorder = FlutterSoundRecorder();
+    final player = AudioPlayer();
 
     await showModalBottomSheet(
       context: context,
@@ -69,146 +78,131 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Add New Task',
-                style: Theme.of(context).textTheme.headlineSmall,
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 16,
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: taskController,
-                decoration: InputDecoration(
-                  labelText: 'What needs to be done?',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceVariant,
-                ),
-                validator:
-                    (value) => value?.isEmpty ?? true ? 'Required' : null,
-                autofocus: true,
-              ),
-              const SizedBox(height: 20),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: FilledButton.tonal(
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                datePickerTheme: DatePickerThemeData(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.surface,
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (date != null) setState(() => dueDate = date);
-                      },
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: 18,
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            dueDate == null
-                                ? 'Add Due Date'
-                                : DateFormat('MMM d, yyyy').format(dueDate!),
-                          ),
-                        ],
-                      ),
-                    ),
+                  Text(
+                    'Add New Task',
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  if (dueDate != null) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.tonal(
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: taskController,
+                    decoration: InputDecoration(
+                      labelText: 'What needs to be done?',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                    ),
+                    validator:
+                        (value) => value?.isEmpty ?? true ? 'Required' : null,
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isRecording ? Icons.stop : Icons.mic,
+                          color: isRecording ? Colors.red : Theme.of(context).colorScheme.primary,
+                        ),
                         onPressed: () async {
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.now(),
-                            builder: (context, child) {
-                              return Theme(
-                                data: Theme.of(context).copyWith(
-                                  timePickerTheme: TimePickerThemeData(
-                                    backgroundColor:
-                                        Theme.of(context).colorScheme.surface,
-                                  ),
-                                ),
-                                child: child!,
+                          if (isRecording) {
+                            await recorder.stopRecorder();
+                            setState(() => isRecording = false);
+                          } else {
+                            final status = await Permission.microphone.request();
+                            if (status.isGranted) {
+                              final dir = await getApplicationDocumentsDirectory();
+                              voiceNotePath = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.m4a';
+                              await recorder.startRecorder(
+                                toFile: voiceNotePath,
+                                codec: Codec.aacMP4,
                               );
-                            },
-                          );
-                          if (time != null) setState(() => dueTime = time);
+                              setState(() => isRecording = true);
+                            }
+                          }
                         },
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      ),
+                      if (voiceNotePath != null)
+                        IconButton(
+                          icon: Icon(Icons.play_arrow),
+                          onPressed: () async {
+                            await player.setUrl(voiceNotePath!);
+                            await player.play();
+                          },
+                        ),
+                      Expanded(
+                        child: FilledButton.tonal(
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    datePickerTheme: DatePickerThemeData(
+                                      backgroundColor:
+                                          Theme.of(context).colorScheme.surface,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (date != null) setState(() => dueDate = date);
+                          },
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 18,
+                                color:
+                                    Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                dueDate == null
+                                    ? 'Add Due Date'
+                                    : DateFormat('MMM d, yyyy').format(dueDate!),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: 18,
-                              color:
-                                  Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              dueTime == null
-                                  ? 'Add Time'
-                                  : dueTime!.format(context),
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: () {
-                  if (taskController.text.trim().isNotEmpty) {
-                    final newTask = Task(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      title: taskController.text.trim(),
-                      categoryId: widget.category.id,
-                      createdAt: DateTime.now(),
-                      dueDate:
-                          dueDate != null
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () {
+                      if (taskController.text.trim().isNotEmpty) {
+                        final newTask = Task(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          title: taskController.text.trim(),
+                          categoryId: widget.category.id,
+                          createdAt: DateTime.now(),
+                          dueDate: dueDate != null
                               ? dueTime != null
                                   ? DateTime(
                                     dueDate!.year,
@@ -223,24 +217,28 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                                     dueDate!.day,
                                   )
                               : null,
-                    );
-                    Navigator.pop(context, newTask);
-                  }
-                },
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                          voiceNotePath: voiceNotePath,
+                          voiceNoteDuration: voiceNoteDuration,
+                        );
+                        Navigator.pop(context, newTask);
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Create Task',
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'Create Task',
-                  style: TextStyle(fontSize: 16),
-                ),
+                  const SizedBox(height: 10),
+                ],
               ),
-              const SizedBox(height: 10),
-            ],
-          ),
+            );
+          },
         );
       },
     ).then((newTask) async {
@@ -250,6 +248,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
         });
         await _saveTasks();
       }
+      await recorder.closeRecorder();
+      await player.dispose();
     });
   }
 
@@ -680,8 +680,11 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                                       : null,
                                 ),
                               ),
-                              subtitle: task.dueDate != null
-                                  ? Text(
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (task.dueDate != null)
+                                    Text(
                                       'Due: ${DateFormat('MMM d, yyyy${task.dueDate!.hour != 0 || task.dueDate!.minute != 0 ? ' h:mm a' : ''}').format(task.dueDate!)}',
                                       style: TextStyle(
                                         fontSize: 12,
@@ -689,8 +692,18 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                                             ? Colors.grey[500]
                                             : Colors.grey[600],
                                       ),
-                                    )
-                                  : null,
+                                    ),
+                                  if (task.voiceNotePath != null)
+                                    IconButton(
+                                      icon: Icon(Icons.play_arrow, size: 16),
+                                      onPressed: () async {
+                                        final player = AudioPlayer();
+                                        await player.setUrl(task.voiceNotePath!);
+                                        await player.play();
+                                      },
+                                    ),
+                                ],
+                              ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -705,10 +718,9 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                                   IconButton(
                                     icon: Icon(
                                       Icons.edit,
-                                      color:
-                                          task.isCompleted
-                                              ? Colors.grey[400]
-                                              : categoryColor,
+                                      color: task.isCompleted
+                                          ? Colors.grey[400]
+                                          : categoryColor,
                                     ),
                                     onPressed: () {
                                       _editTask(task);

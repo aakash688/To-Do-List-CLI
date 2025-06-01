@@ -7,6 +7,8 @@ import 'providers/settings_provider.dart';
 import 'screens/pin_auth_screen.dart';
 import 'screens/biometric_auth_screen.dart';
 import 'screens/main_layout.dart';
+import 'screens/create_new_pin_screen.dart';
+import 'screens/verify_pin_screen.dart';
 
 void main() async {
   // Ensure Flutter bindings are initialized
@@ -82,6 +84,8 @@ class MyApp extends StatelessWidget {
         '/pin': (context) => const PinAuthScreen(),
         '/biometric': (context) => const BiometricAuthScreen(),
         '/main': (context) => const MainLayout(),
+        '/verify_pin': (context) => const VerifyPinScreen(),
+        '/create_new_pin': (context) => const CreateNewPinScreen(),
       },
     );
   }
